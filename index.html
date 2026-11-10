@@ -41,7 +41,7 @@ button,a.btn{font:600 14px var(--font);border-radius:10px;padding:11px 14px;bord
 a.btn.primary,button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);flex:1}
 button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .tabs{display:flex;gap:6px}
-.tabs button{flex:1;padding:9px 6px;font-size:13px}
+.tabs button{flex:1;padding:9px 4px;font-size:13px;min-width:0}
 .tabs button[aria-selected="true"]{background:var(--fg);color:var(--surface);border-color:var(--fg)}
 ol{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column}
 li{display:grid;grid-template-columns:92px 1fr auto;gap:10px;align-items:center;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}
@@ -112,11 +112,11 @@ button:disabled{opacity:.55;cursor:default}
       <button type="button" data-day="1">13일(금)</button>
       <button type="button" data-day="2">14일(토)</button>
       <button type="button" data-day="3">15일(일)</button>
+      <button type="button" data-day="0">알림</button>
     </div>
     <ol id="list"></ol>
-  </section>
-  <section class="card">
-    <div class="eyebrow">푸시 알림</div>
+    <div id="npanel" hidden>
+    <div class="eyebrow" style="margin-top:12px">푸시 알림</div>
     <div class="sub">페이지를 닫아도 각 일정 10분 전에 폰으로 알림이 옵니다.</div>
     <ol class="steps">
       <li><span>1</span><div>폰에 <b>ntfy</b> 앱을 설치합니다 (플레이스토어 / 앱스토어).</div></li>
@@ -128,8 +128,9 @@ button:disabled{opacity:.55;cursor:default}
       <button id="nsched" type="button" class="primary">전체 일정 알림 예약</button>
     </div>
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
+    </div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 정확한 길은 구글 지도 버튼으로 확인하세요.</p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다.</p>
 </main>
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-labelledby="stitle">
@@ -403,6 +404,7 @@ function render(){
     if(x.i!==t.i)L.marker(x.ll,{icon:ic("dot")}).bindTooltip(x.name).addTo(dots);
   });
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.day===day)));
+  $("list").hidden=day===0;$("npanel").hidden=day!==0;
 }
 function focusMap(){
   const t=manual!=null?S[manual]:autoTarget(new Date());
@@ -459,7 +461,11 @@ $("nsched").onclick=async()=>{const b=$("nsched");b.disabled=true;nst("","예약
   b.disabled=false;};
 scheduledTimes().then(h=>{const[c,t]=summary(h,Math.floor(Date.now()/1000));nst(c,t);}).catch(()=>{});
 
+// 처음 열 때와 백그라운드에서 돌아올 때: 지금 시간대의 일정을 자동으로 선택
+function goNow(){manual=null;closeSheet();if(day!==0)day=autoTarget(new Date()).d;render();focusMap();}
 day=autoTarget(new Date()).d;render();focusMap();
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")goNow();});
+window.addEventListener("pageshow",e=>{if(e.persisted)goNow();});
 setInterval(render,REFRESH);
 </script>
 </body>
