@@ -61,7 +61,9 @@ button:disabled{opacity:.55;cursor:default}
 .leg{display:grid;grid-template-columns:64px 1fr;gap:8px;font-size:13px;background:var(--bg);border-radius:10px;padding:8px 10px}
 .leg b{font-size:12px;color:var(--accent)}
 .leg a{color:var(--accent);font-weight:600;white-space:nowrap}
-.tg{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:0 6px}
+.legh{font-size:12px;font-weight:700;color:var(--muted)}
+.tl{margin-top:4px;font-size:12.5px;background:var(--bg);border-radius:8px;padding:5px 8px}
+.tl b{color:var(--accent);font-size:11.5px;margin-right:2px}
 .foot{font-size:12px;color:var(--muted);text-align:center}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;background:#0a9d58;border:3px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .me{width:18px;height:18px;border-radius:50%;background:#2b7cff;border:3px solid #fff;box-shadow:0 0 0 2px rgba(43,124,255,.35)}
@@ -203,8 +205,10 @@ function render(){
   $("sTime").textContent=fmtT(over?now-t.t1:started?t.t1-now:t.t0-now);
   $("route").href="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(t.q)+"&travelmode=transit";
 
-  const lg=$("legs");lg.textContent="";lg.hidden=!t.tr.length;
-  t.tr.forEach(l=>{const d=document.createElement("div");d.className="leg";const b=document.createElement("b");b.textContent=l[0];
+  const lg=$("legs");lg.textContent="";
+  const ts=t.tr.length?t:S.find(x=>x.i>t.i&&x.tr.length);lg.hidden=!ts;
+  if(ts){const h=document.createElement("div");h.className="legh";h.textContent=ts===t?"이 일정의 교통편":"다음 교통편 · "+ts.s+" "+ts.name;lg.appendChild(h);}
+  (ts?ts.tr:[]).forEach(l=>{const d=document.createElement("div");d.className="leg";const b=document.createElement("b");b.textContent=l[0];
     const sp=document.createElement("div");sp.textContent=l[1]+" ";
     if(l[2]){const a=document.createElement("a");a.href=l[2];a.target="_blank";a.rel="noopener";a.textContent=l[3]+" 보기";sp.appendChild(a);}
     d.append(b,sp);lg.appendChild(d);});
@@ -237,7 +241,7 @@ function render(){
     li.querySelector(".t").textContent=x.s+"~"+x.e;
     li.querySelector(".n").textContent=x.name;
     li.querySelector(".d").textContent=x.note;
-    if(x.tr.length){const g=document.createElement("div");g.className="tg";g.textContent="교통편 안내";li.lastChild.appendChild(g);}
+    x.tr.forEach(l=>{const g=document.createElement("div");g.className="tl";const b=document.createElement("b");b.textContent=l[0];g.append(b," "+l[1]);li.lastChild.appendChild(g);});
     li.onclick=()=>{manual=x.i;render();focusMap();document.querySelector("main").scrollTo({top:0,behavior:"smooth"});};
     ol.appendChild(li);
     if(x.i!==t.i)L.marker(x.ll,{icon:ic("dot")}).bindTooltip(x.name).addTo(dots);
