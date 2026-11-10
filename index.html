@@ -19,6 +19,7 @@
   --warn:#f0b35a; --warn-soft:#3a2c12; --bad:#f08a80; --bad-soft:#3d1f1c; color-scheme:dark;
 }}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font);display:flex;flex-direction:column}
 #map{flex:0 0 42vh;min-height:220px;background:var(--line);z-index:0}
@@ -43,7 +44,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-off
 .tabs button{flex:1;padding:9px 6px;font-size:13px}
 .tabs button[aria-selected="true"]{background:var(--fg);color:var(--surface);border-color:var(--fg)}
 ol{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column}
-li{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}
+li{display:grid;grid-template-columns:92px 1fr auto;gap:10px;align-items:center;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}
 li .t{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);padding-top:1px}
 li .n{font-weight:600}
 li .d{font-size:12.5px;color:var(--muted)}
@@ -51,7 +52,7 @@ li.done{opacity:.5}
 li.target{background:var(--accent-soft);outline:1.5px solid var(--accent)}
 li.target .t{color:var(--accent);font-weight:700}
 .steps{margin:10px 0 0}
-.steps li{grid-template-columns:24px 1fr;cursor:default;padding:8px 0;font-size:13.5px}
+.steps li{grid-template-columns:24px 1fr;align-items:start;cursor:default;padding:8px 0;font-size:13.5px}
 .steps li>span{width:22px;height:22px;border-radius:50%;background:var(--bg);color:var(--muted);font-size:12px;font-weight:700;display:grid;place-items:center}
 .topic{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
 .topic code{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13.5px;user-select:all;word-break:break-all}
@@ -62,8 +63,23 @@ button:disabled{opacity:.55;cursor:default}
 .leg b{font-size:12px;color:var(--accent)}
 .leg a{color:var(--accent);font-weight:600;white-space:nowrap}
 .legh{font-size:12px;font-weight:700;color:var(--muted)}
-.tl{margin-top:4px;font-size:12.5px;background:var(--bg);border-radius:8px;padding:5px 8px}
-.tl b{color:var(--accent);font-size:11.5px;margin-right:2px}
+.cd{margin-top:4px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.ib{display:flex;gap:6px}
+.ibtn{width:40px;height:40px;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--bg)}
+.ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ibtn.tr{color:var(--accent);border-color:var(--accent)}
+.ibtn.fd{color:var(--warn);border-color:var(--warn)}
+.sheet{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet-in{background:var(--surface);color:var(--fg);width:100%;max-width:640px;max-height:82%;overflow-y:auto;border-radius:18px 18px 0 0;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.sheet-h h2{font-size:16px;margin:0;line-height:1.35;text-wrap:balance}
+.sheet-h button{padding:7px 12px;font-size:13px;flex:none}
+#sbody{display:flex;flex-direction:column;gap:8px}
+.fc{display:flex;gap:12px;background:var(--bg);border-radius:12px;padding:10px;align-items:start}
+.fc img{flex:none;width:96px;height:96px;object-fit:cover;border-radius:10px;background:var(--line)}
+.fc>div{flex:1;min-width:0}
+.fc .n{font-weight:700}.fc .d{font-size:13px;color:var(--muted)}.fc .m{font-size:13px;margin:4px 0 8px}
+.fc a.btn{display:inline-block;padding:8px 12px;font-size:13px}
 .foot{font-size:12px;color:var(--muted);text-align:center}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;background:#0a9d58;border:3px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .me{width:18px;height:18px;border-radius:50%;background:#2b7cff;border:3px solid #fff;box-shadow:0 0 0 2px rgba(43,124,255,.35)}
@@ -112,8 +128,14 @@ button:disabled{opacity:.55;cursor:default}
     </div>
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀌고 교통편이 위 카드에 나옵니다. 열차와 페리의 정확한 출발 시각은 시간표 보기로 확인하세요. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 정확한 길은 구글 지도 버튼으로 확인하세요.</p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 정확한 길은 구글 지도 버튼으로 확인하세요.</p>
 </main>
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-in" role="dialog" aria-labelledby="stitle">
+    <div class="sheet-h"><h2 id="stitle"></h2><button id="sx" type="button">닫기</button></div>
+    <div id="sbody"></div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -128,12 +150,43 @@ const P = { // 대략 좌표
   donki:[34.3935,132.4625], masui:[34.3938,132.4640], asahi:[34.3925,132.4610]
 };
 const GM=(o,d)=>"https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(o)+"&destination="+encodeURIComponent(d)+"&travelmode=transit";
+const FERRY_URL="https://jr-miyajimaferry.co.jp/timetable/";
+// 시간표. 버스: 히로시마공항 공식(2026.10.25~2027.1.31). 페리: JR 서일본 미야지마 페리 통상 다이어.
+const hm=(h,ms)=>ms.map(m=>(h<10?"0":"")+h+":"+(m<10?"0":"")+m);
+const q4=[10,25,40,55];
+const TT={
+ A2C:[["12:25","13:20"],["13:05","14:10"],["13:25","14:20"],["14:20","15:15"],["14:35","15:30"],["15:30","16:25"],["15:55","16:50"],["16:05","17:00"],["16:15","17:10"],["16:55","17:50"],["17:40","18:35"],["18:15","19:20"],["18:50","19:45"],["19:05","20:00"],["20:05","21:00"],["20:20","21:15"]],
+ C2A:[["09:15","10:10"],["09:45","10:40"],["10:15","11:10"],["10:35","11:30"],["10:55","11:50"],["11:35","12:30"],["11:55","12:50"],["12:15","13:10"],["12:35","13:30"],["12:55","13:50"],["13:15","14:10"],["13:35","14:30"],["14:15","15:10"]],
+ FOUT:[].concat(["06:25","07:05","07:40","07:57"],...[8,9,10,11,12,13,14,15,16,17].map(h=>hm(h,q4)),["18:10","18:25","18:45","19:15","19:45","20:27","21:10","22:00","22:42"]).map(t=>[t]),
+ FIN:[].concat(["05:45","06:40","07:20","07:55"],...[8,9,10,11,12,13,14,15,16,17].map(h=>hm(h,q4)),["18:10","18:25","18:40","19:00","19:30","20:00","20:42","21:25","22:14"]).map(t=>[t])
+};
+const MAPS=q=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+// 음식점 후보: [이름, 설명, 대표 메뉴, 구글 지도 검색어, 예시 사진용 위키백과 문서]
+const FOOD={
+ "저녁: 히로시마 오코노미야키":[
+  ["오코노미무라","오코노미야키 가게가 층마다 모여 있는 건물. 빈자리가 있는 가게로 들어가면 됨.","히로시마식 오코노미야키(소바나 우동을 넣은 니쿠타마), 굴 철판구이","お好み村 広島","お好み焼き"],
+  ["밋짱 총본점","히로시마식 오코노미야키로 유명한 가게. 대기가 생길 수 있음.","소바 니쿠타마 오코노미야키","みっちゃん総本店 八丁堀","お好み焼き"],
+  ["나가레카와 철판구이","오코노미무라 대기가 길 때의 대안. 호텔 주변.","철판구이, 오코노미야키","流川 鉄板焼き 広島","鉄板焼き"]],
+ "미야지마 관광 · 먹거리":[
+  ["굴구이 · 굴튀김 (카키야 등)","오모테산도 상점가의 굴 요리. 줄이 길면 노점 굴구이로.","굴구이, 굴튀김(카키후라이), 굴밥","牡蠣屋 宮島","カキフライ"],
+  ["아나고메시","붕장어 덮밥. 미야지마 명물.","아나고메시(붕장어 덮밥)","宮島 あなごめし","あなご飯"],
+  ["모미지만주 · 아게모미지","단풍잎 모양 만주. 튀긴 아게모미지는 걸으면서 먹기 좋음.","모미지만주, 아게모미지","宮島 揚げもみじ","もみじ饅頭"]],
+ "저녁: 오노미치 라멘":[
+  ["오노미치 라멘 (타니 등)","역 주변 라멘집. 일요일·저녁 영업 여부는 당일 확인.","오노미치 라멘(간장 국물에 돼지 등지방)","尾道ラーメン 尾道駅","尾道ラーメン"],
+  ["푸딩: 오야츠토야마네코","시간 여유가 있을 때만. 역 근처 푸딩 가게.","오노미치 푸딩","おやつとやまねこ 尾道","プリン"]],
+ "빠른 점심: 니쿠노 마스이":[
+  ["니쿠노 마스이","고기·돈가스 정식집. 1순위.","돈가스 정식, 고기 정식","肉のますゐ 広島","豚カツ"],
+  ["밋짱 총본점","오코노미야키. 대기 가능성이 있어 시간이 빠듯하면 피하기.","소바 니쿠타마 오코노미야키","みっちゃん総本店 八丁堀","お好み焼き"]],
+ "카페: 아사히 커피 살롱":[
+  ["아사히 커피 살롱","레트로 다방. 1순위.","커피, 디저트","朝日珈琲サロン 広島","喫茶店"],
+  ["예스터데이","레트로 카페. 대안.","커피, 디저트","イエスタデイ 喫茶 広島","コーヒー"]]
+};
 const BUS_URL="https://www.hij.airport.jp/access/timetable/1.html";
 // 교통편: [구분, 설명, 시간표 링크, 링크 이름]. "대략" 표시는 공식 시간표로 확인하지 못한 값.
 const S = [
  [1,"15:15","15:55","히로시마공항 도착","입국심사와 수하물 수령 후 리무진버스 승차장(1번)으로.",P.airport,"Hiroshima Airport",800],
  [1,"15:55","17:00","리무진버스 → 히로시마 버스센터","15:55 또는 16:15 버스. 약 55분.",P.bus,"Hiroshima Bus Center",300,1,[
-   ["버스","공항 1번 승강장 → 버스센터, 1,500엔. 15:55 출발(16:50 도착) · 16:15 출발(17:10 도착) · 놓치면 16:55 출발(17:50 도착).",BUS_URL,"공식 시간표"]]],
+   ["버스","공항 1번 승강장 → 버스센터, 1,500엔. 계획은 15:55 또는 16:15 버스.",BUS_URL,"공식 시간표","A2C"]]],
  [1,"17:00","17:30","스마일 호텔 히로시마 체크인","7-10 Nagarekawacho, Naka Ward.",P.hotel,"Smile Hotel Hiroshima",200,0,[
    ["도보","버스센터 → 호텔 약 15~20분(대략).",GM("Hiroshima Bus Center","Smile Hotel Hiroshima"),"경로"]]],
  [1,"17:45","18:25","히로시마성 외관 · 주변 산책","성 내부 관람은 제외. 피곤하면 생략하고 원폭돔으로.",P.castle,"Hiroshima Castle",400],
@@ -144,13 +197,13 @@ const S = [
  [2,"07:35","08:00","JR 히로시마역으로 이동","08:00 열차를 타기 위한 준비 구간(일정표에는 없음).",P.hstation,"Hiroshima Station",300,1,[
    ["도보·전차","호텔 → 히로시마역 도보 약 20분, 또는 노면전차(대략).",GM("Smile Hotel Hiroshima","Hiroshima Station"),"경로"]]],
  [2,"08:00","09:15","JR + 페리 → 미야지마","히로시마역 → 미야지마구치 → 페리 → 미야지마.",P.mpier,"Miyajima Ferry Terminal",300,1,[
-   ["JR","산요본선 히로시마 → 미야지마구치, 약 30분(대략). 배차가 잦은 구간.",GM("Hiroshima Station","Miyajimaguchi Station"),"열차 시간표"],
+   ["JR","산요본선 히로시마 → 미야지마구치, 약 28분, 대략 15분 간격. 분 단위 출발 시각은 링크에서 확인.",GM("Hiroshima Station","Miyajimaguchi Station"),"열차 시간표"],
    ["도보","미야지마구치역 → 페리 선착장 약 5분."],
-   ["페리","JR 서일본 미야지마 페리, 약 10분. 왕복 400엔 + 미야지마 방문세 100엔.",GM("Miyajimaguchi Station","Miyajima Ferry Terminal"),"페리 시간표"]]],
+   ["페리","JR 서일본 미야지마 페리, 약 10분. 왕복 400엔 + 미야지마 방문세 100엔.",FERRY_URL,"공식 시간표","FOUT"]]],
  [2,"09:15","12:00","미야지마 관광 · 먹거리","이쓰쿠시마 신사 → 도리이 → 다이쇼인 → 오모테산도(굴, 모미지만주, 아나고메시). 상점가는 30~45분만.",P.shrine,"Itsukushima Shrine",900],
  [2,"12:00","14:45","페리 + JR → 오노미치","환승에 따라 2~3시간. 12시 정각에 선착장 도착이 목표.",P.ostation,"Onomichi Station",300,1,[
-   ["페리","미야지마 → 미야지마구치, 약 10분.",GM("Miyajima Ferry Terminal","Miyajimaguchi Station"),"페리 시간표"],
-   ["JR","산요본선 미야지마구치 → (이토자키 환승) → 오노미치, 약 2시간, 1,980엔.",GM("Miyajimaguchi Station","Onomichi Station"),"열차 시간표"],
+   ["페리","미야지마 → 미야지마구치, 약 10분.",FERRY_URL,"공식 시간표","FIN"],
+   ["JR","산요본선 미야지마구치 → (이토자키 환승) → 오노미치, 약 2시간, 1,980엔. 히로시마 방면 열차는 대략 15분 간격. 분 단위 출발 시각은 링크에서 확인.",GM("Miyajimaguchi Station","Onomichi Station"),"열차 시간표"],
    ["대안","히로시마~후쿠야마 신칸센 이용 시 약 1시간 40분, 5,170~6,220엔."]]],
  [2,"14:45","17:45","오노미치 관광","① 센코지 로프웨이·전망대 ② 센코지 ③ 고양이 골목 ④ 상점가. 미술관은 시간이 될 때만.",P.senkoji,"Senkoji Temple Onomichi",900,0,[
    ["도보","오노미치역 → 로프웨이 산로쿠역 약 15분(대략).",GM("Onomichi Station","Senkoji Ropeway Sanroku Station"),"경로"],
@@ -168,10 +221,10 @@ const S = [
  [3,"12:20","12:55","버스센터 2번 승강장","12:40까지 도착해서 대기. 짐이 많으면 택시.",P.bus,"Hiroshima Bus Center",250,0,[
    ["도보","카페·호텔 주변 → 버스센터 약 15~20분(대략).",GM("Smile Hotel Hiroshima","Hiroshima Bus Center"),"경로"]]],
  [3,"12:55","13:50","리무진버스 → 히로시마공항","기본 12:55 버스. 16:15 귀국편.",P.airport,"Hiroshima Airport",800,1,[
-   ["버스","버스센터 2번 승강장, 1,500엔. 12:35 출발(13:30 도착, 가장 여유) · 12:55 출발(13:50 도착, 기본) · 13:15 출발(14:10 도착, 마지막 선택지).",BUS_URL,"공식 시간표"],
+   ["버스","버스센터 2번 승강장, 1,500엔. 12:35(가장 여유) · 12:55(기본) · 13:15(마지막 선택지).",BUS_URL,"공식 시간표","C2A"],
    ["주의","14:15 버스는 15:10 도착이라 16:15 출발까지 65분뿐. 이용하지 않기."]]],
  [3,"13:50","16:15","공항 체크인 · 출국","체크인, 수하물 위탁, 보안검색, 출국. 16:15 출발.",P.airport,"Hiroshima Airport",800]
-].map((a,i)=>({i,d:a[0],s:a[1],e:a[2],name:a[3],note:a[4],ll:a[5],q:a[6],r:a[7],move:!!a[8],tr:a[9]||[],
+].map((a,i)=>({i,d:a[0],s:a[1],e:a[2],name:a[3],note:a[4],ll:a[5],q:a[6],r:a[7],move:!!a[8],tr:a[9]||[],food:FOOD[a[3]]||[],
   t0:new Date(DATES[a[0]]+"T"+a[1]+":00+09:00"),t1:new Date(DATES[a[0]]+"T"+a[2]+":00+09:00")}));
 
 const $=id=>document.getElementById(id);
@@ -194,6 +247,48 @@ function fmtT(ms){const m=Math.round(Math.abs(ms)/60000);if(m>=2880)return Math.
 
 function autoTarget(now){return S.find(x=>x.t1>now)||S[S.length-1];}
 
+const mk=(d,t)=>new Date(DATES[d]+"T"+t+":00+09:00");
+function ttText(x,key,now){
+  const deps=TT[key].map(a=>({dep:mk(x.d,a[0]),ds:a[0],as:a[1]}));
+  const f=v=>v.ds+(v.as?"→"+v.as:"");
+  if(now>=mk(x.d,"00:00")&&now<=mk(x.d,"23:59")){
+    const nx=deps.filter(v=>v.dep>now).slice(0,4);
+    if(!nx.length)return"오늘 남은 편이 없습니다.";
+    return"다음 편 "+f(nx[0])+" · "+fmtT(nx[0].dep-now)+" 뒤"+(nx[1]?" · 그다음 "+nx.slice(1).map(f).join(", "):"");
+  }
+  const w=deps.filter(v=>v.dep>=x.t0-25*60000&&v.dep<=x.t1).slice(0,6);
+  return"계획 시간대 출발편: "+w.map(f).join(", ")+". 당일에는 다음 편까지 남은 시간이 표시됩니다.";
+}
+function legNode(x,l,now){const d=document.createElement("div");d.className="leg";const b=document.createElement("b");b.textContent=l[0];
+  const sp=document.createElement("div");sp.textContent=l[1]+" ";
+  if(l[2]){const a=document.createElement("a");a.href=l[2];a.target="_blank";a.rel="noopener";a.textContent=l[3]+" 보기";sp.appendChild(a);}
+  if(l[4]){const c=document.createElement("div");c.className="cd";c.textContent=ttText(x,l[4],now);sp.appendChild(c);}
+  d.append(b,sp);return d;}
+const IC={tr:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 17l-2 4M15 17l2 4"/><circle cx="9" cy="14" r=".6"/><circle cx="15" cy="14" r=".6"/></svg>',
+  fd:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v5a2 2 0 0 0 4 0V3M7 3v18M17 3c-2 2-3 5-3 9h3v9"/></svg>'};
+let sheet=null; const imgCache={};
+function wikiImg(title,img){
+  const set=u=>{if(u){img.src=u;img.hidden=false;}};
+  if(title in imgCache)return set(imgCache[title]);
+  fetch("https://ja.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(title)).then(r=>r.ok?r.json():null)
+    .then(j=>{imgCache[title]=j&&j.thumbnail?j.thumbnail.source:"";set(imgCache[title]);}).catch(()=>{});
+}
+function drawSheet(){
+  const x=S[sheet.i], now=new Date(), b=$("sbody");b.textContent="";
+  $("stitle").textContent=(sheet.kind==="tr"?"교통편 안내 · ":"음식점 후보 · ")+x.s+" "+x.name;
+  if(sheet.kind==="tr"){x.tr.forEach(l=>b.appendChild(legNode(x,l,now)));
+    const n=document.createElement("p");n.className="sub";n.textContent="버스와 페리의 남은 시간은 공식 시간표 기준이며 실제 지연은 반영되지 않습니다. JR 열차는 링크에서 그 시점의 출발 시각을 확인하세요.";b.appendChild(n);
+  }else{x.food.forEach(f=>{const c=document.createElement("div");c.className="fc";
+    const im=document.createElement("img");im.alt=f[2]+" 예시 사진";im.hidden=true;im.loading="lazy";wikiImg(f[4],im);
+    const t=document.createElement("div");t.innerHTML='<div class="n"></div><div class="d"></div><div class="m"></div>';
+    t.children[0].textContent=f[0];t.children[1].textContent=f[1];t.children[2].textContent="대표 메뉴: "+f[2];
+    const a=document.createElement("a");a.className="btn";a.href=MAPS(f[3]);a.target="_blank";a.rel="noopener";a.textContent="가게 사진·메뉴·영업시간 보기";t.appendChild(a);
+    c.append(im,t);b.appendChild(c);});
+    const n=document.createElement("p");n.className="sub";n.textContent="사진은 위키백과의 음식 예시 사진이며 해당 가게의 사진이 아닙니다. 실제 메뉴판과 가격은 버튼으로 구글 지도에서 확인하세요.";b.appendChild(n);}
+}
+function openSheet(kind,i){sheet={kind,i};drawSheet();$("sheet").hidden=false;}
+function closeSheet(){sheet=null;$("sheet").hidden=true;}
+
 function render(){
   const now=new Date(), a=autoTarget(now), t=manual!=null?S[manual]:a;
   const started=now>=t.t0, over=now>=t.t1;
@@ -208,10 +303,8 @@ function render(){
   const lg=$("legs");lg.textContent="";
   const ts=t.tr.length?t:S.find(x=>x.i>t.i&&x.tr.length);lg.hidden=!ts;
   if(ts){const h=document.createElement("div");h.className="legh";h.textContent=ts===t?"이 일정의 교통편":"다음 교통편 · "+ts.s+" "+ts.name;lg.appendChild(h);}
-  (ts?ts.tr:[]).forEach(l=>{const d=document.createElement("div");d.className="leg";const b=document.createElement("b");b.textContent=l[0];
-    const sp=document.createElement("div");sp.textContent=l[1]+" ";
-    if(l[2]){const a=document.createElement("a");a.href=l[2];a.target="_blank";a.rel="noopener";a.textContent=l[3]+" 보기";sp.appendChild(a);}
-    d.append(b,sp);lg.appendChild(d);});
+  (ts?ts.tr:[]).forEach(l=>lg.appendChild(legNode(ts,l,now)));
+  if(sheet&&sheet.kind==="tr")drawSheet();
   pin.setLatLng(t.ll);
   const st=$("status");
   if(me){
@@ -237,11 +330,13 @@ function render(){
   S.filter(x=>x.d===day).forEach(x=>{
     const li=document.createElement("li");
     li.className=(x.t1<=now?"done ":"")+(x.i===t.i?"target":"");
-    li.innerHTML='<div class="t"></div><div><div class="n"></div><div class="d"></div></div>';
+    li.innerHTML='<div class="t"></div><div><div class="n"></div><div class="d"></div></div><div class="ib"></div>';
     li.querySelector(".t").textContent=x.s+"~"+x.e;
     li.querySelector(".n").textContent=x.name;
     li.querySelector(".d").textContent=x.note;
-    x.tr.forEach(l=>{const g=document.createElement("div");g.className="tl";const b=document.createElement("b");b.textContent=l[0];g.append(b," "+l[1]);li.lastChild.appendChild(g);});
+    [["tr",x.tr,"교통편 안내"],["fd",x.food,"음식점 후보"]].forEach(([k,arr,lab])=>{if(!arr.length)return;
+      const bt=document.createElement("button");bt.type="button";bt.className="ibtn "+k;bt.innerHTML=IC[k];bt.setAttribute("aria-label",x.name+" "+lab);bt.title=lab;
+      bt.onclick=e=>{e.stopPropagation();openSheet(k,x.i);};li.lastChild.appendChild(bt);});
     li.onclick=()=>{manual=x.i;render();focusMap();document.querySelector("main").scrollTo({top:0,behavior:"smooth"});};
     ol.appendChild(li);
     if(x.i!==t.i)L.marker(x.ll,{icon:ic("dot")}).bindTooltip(x.name).addTo(dots);
@@ -269,6 +364,7 @@ $("locate").onclick=()=>{
     $("status").textContent=e.code===1?"위치 권한이 꺼져 있습니다. 브라우저 설정에서 이 페이지의 위치 권한을 허용해 주세요.":"위치를 찾지 못했습니다. 야외로 나가거나 잠시 후 다시 눌러 주세요.";
   },{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
 };
+$("sx").onclick=closeSheet;$("sheet").onclick=e=>{if(e.target===$("sheet"))closeSheet();};
 $("auto").onclick=()=>{manual=null;day=autoTarget(new Date()).d;render();focusMap();};
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{day=+b.dataset.day;render();});
 
