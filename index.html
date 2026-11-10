@@ -57,6 +57,11 @@ li.target .t{color:var(--accent);font-weight:700}
 .topic code{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13.5px;user-select:all;word-break:break-all}
 .topic button{padding:7px 12px;font-size:13px}
 button:disabled{opacity:.55;cursor:default}
+.legs{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.leg{display:grid;grid-template-columns:64px 1fr;gap:8px;font-size:13px;background:var(--bg);border-radius:10px;padding:8px 10px}
+.leg b{font-size:12px;color:var(--accent)}
+.leg a{color:var(--accent);font-weight:600;white-space:nowrap}
+.tg{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:0 6px}
 .foot{font-size:12px;color:var(--muted);text-align:center}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;background:#0a9d58;border:3px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .me{width:18px;height:18px;border-radius:50%;background:#2b7cff;border:3px solid #fff;box-shadow:0 0 0 2px rgba(43,124,255,.35)}
@@ -76,6 +81,7 @@ button:disabled{opacity:.55;cursor:default}
       <div class="stat"><b id="sTime">–</b><span id="sTimeLabel">시작까지</span></div>
     </div>
     <div class="status" id="status">위치 확인 버튼을 눌러 주세요.</div>
+    <div id="legs" class="legs" hidden></div>
     <div class="row">
       <a class="btn primary" id="route" target="_blank" rel="noopener">구글 지도로 경로 보기</a>
       <button id="locate" type="button">내 위치 켜기</button>
@@ -104,12 +110,12 @@ button:disabled{opacity:.55;cursor:default}
     </div>
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 정확한 길은 구글 지도 버튼으로 확인하세요.</p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀌고 교통편이 위 카드에 나옵니다. 열차와 페리의 정확한 출발 시각은 시간표 보기로 확인하세요. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 정확한 길은 구글 지도 버튼으로 확인하세요.</p>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-// 일정 데이터 (2026.11.10 수정본 PDF 기준). 시간은 일본 현지 시각.
+// 일정 데이터 (히로시마 여행 상세본 PDF 기준, 11/15 16:15 귀국편). 시간은 일본 현지 시각.
 const DATES = {1:"2026-11-13", 2:"2026-11-14", 3:"2026-11-15"};
 const P = { // 대략 좌표
   airport:[34.4361,132.9194], bus:[34.3966,132.4577], hotel:[34.3925,132.4660], castle:[34.4027,132.4592],
@@ -119,38 +125,51 @@ const P = { // 대략 좌표
   peak:[34.4117,133.1975], museum:[34.4113,133.1962], senkoji:[34.4108,133.1990], tani:[34.4050,133.1940],
   donki:[34.3935,132.4625], masui:[34.3938,132.4640], asahi:[34.3925,132.4610]
 };
+const GM=(o,d)=>"https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(o)+"&destination="+encodeURIComponent(d)+"&travelmode=transit";
+const BUS_URL="https://www.hij.airport.jp/access/timetable/1.html";
+// 교통편: [구분, 설명, 시간표 링크, 링크 이름]. "대략" 표시는 공식 시간표로 확인하지 못한 값.
 const S = [
- // d, 시작, 끝, 이름, 메모, 좌표, 구글 검색어, 도착 반경(m), 이동 구간 여부
- [1,"15:15","16:15","히로시마공항 · 입국 후 버스 승차장","입국심사와 수하물을 마치고 리무진버스 승차장으로. 빨리 끝나면 15:55 버스(16:50 도착).",P.airport,"Hiroshima Airport",800],
- [1,"16:15","17:10","리무진버스 → 히로시마 버스센터","16:15 공항 출발, 17:10 버스센터 도착 예정.",P.bus,"Hiroshima Bus Center",300,1],
- [1,"17:10","17:30","스마일 호텔 히로시마 체크인","버스센터에서 도보 15~20분. 7-10 Nagarekawacho, Naka Ward.",P.hotel,"Smile Hotel Hiroshima",200],
- [1,"17:40","18:30","히로시마성 (외관)","천수각 내부는 폐관. 해자와 성 외관 위주. 호텔 도착이 18시 이후면 생략.",P.castle,"Hiroshima Castle",400],
- [1,"18:45","19:25","원폭돔 · 평화기념공원","저녁 야외 산책. 조명이 어두운 곳 주의.",P.dome,"Atomic Bomb Dome",400],
- [1,"19:40","21:10","저녁: 오코노미무라","대기가 길면 밋짱 총본점이나 나가레카와 철판구이로.",P.okono,"Okonomimura Hiroshima",200],
- [1,"21:10","22:00","혼도리 · 나가레카와","쇼핑거리 야간 산책. 피곤하면 바로 호텔.",P.hondori,"Hondori Shopping Street Hiroshima",400],
- [2,"07:35","08:00","JR 히로시마역으로 이동","08:00 산요본선을 타기 위한 이동 구간(일정표에는 없는 준비 시간).",P.hstation,"Hiroshima Station",300,1],
- [2,"08:00","09:10","JR + 페리 → 미야지마","산요본선으로 미야지마구치(25~30분), 선착장 도보 5~7분, JR 페리 10분.",P.mpier,"Miyajima Ferry Terminal",300,1],
- [2,"09:10","10:00","이쓰쿠시마 신사 · 도리이","사람이 많으면 사진부터.",P.shrine,"Itsukushima Shrine",300],
- [2,"10:00","10:40","다이쇼인 · 단풍길","계단 많음. 20분 이상 밀렸으면 생략.",P.daisho,"Daishoin Temple Miyajima",250],
- [2,"10:40","11:15","오모테산도 상점가","구운 굴, 아게모미지, 기념품.",P.omote,"Miyajima Omotesando Shopping Street",250],
- [2,"11:15","12:00","점심: 카키야","굴 요리나 아나고 덮밥. 줄이 길면 간단식.",P.kakiya,"Kakiya Miyajima",200],
- [2,"12:00","12:35","미야지마 선착장 · 페리","12:31 만조 부근 도리이 재촬영 후 탑승.",P.mpier,"Miyajima Ferry Terminal",300],
- [2,"12:35","14:50","JR → 오노미치","미야지마구치에서 산요본선, 이토자키 등 환승 가능. 2~2.5시간.",P.ostation,"Onomichi Station",300,1],
- [2,"14:50","15:25","오노미치 상점가 · 로프웨이역","오야츠토야마네코 푸딩. 늦으면 생략.",P.oarcade,"Senkoji Ropeway Sanroku Station",300],
- [2,"15:25","15:55","센코지 로프웨이 · PEAK 전망대","세토내해 사진.",P.peak,"Senkoji Park Observatory PEAK",250],
- [2,"15:55","16:25","오노미치 시립미술관 (선택)","16:30 입장 마감 가능성. 시간이 없으면 생략.",P.museum,"Onomichi City Museum of Art",200],
- [2,"16:25","17:15","센코지 · 고양이 골목","계단을 따라 하산.",P.senkoji,"Senkoji Temple Onomichi",300],
- [2,"17:15","18:05","저녁: 오노미치 라멘 타니","역 부근. 영업 여부 당일 확인.",P.tani,"尾道ラーメン たに",200],
- [2,"18:05","20:00","JR → 히로시마","일반열차 환승 포함. 도착 후 호텔 근처에서 휴식.",P.hstation,"Hiroshima Station",300,1],
- [3,"08:30","09:00","호텔 체크아웃","캐리어 보관을 프런트에 확인. 안 되면 버스센터 코인로커.",P.hotel,"Smile Hotel Hiroshima",200],
- [3,"09:00","11:15","돈키호테 핫초보리 니시점","09시 오픈. 핫초보리점과 혼동 주의. 면세용 여권 챙기기.",P.donki,"ドン・キホーテ 八丁堀西店",200],
- [3,"11:15","12:00","핫초보리 주변 · 식당으로 이동","잡화점을 잠깐 보고 식당 대기.",P.masui,"肉のますゐ 広島",250],
- [3,"12:00","13:00","점심: 니쿠노 마스이","돈가스·고기정식. 2순위 밋짱 총본점.",P.masui,"肉のますゐ 広島",200],
- [3,"13:00","13:25","카페: 아사히 커피 살롱","대안은 예스터데이, 마리후 커피. 시간이 없으면 생략.",P.asahi,"朝日珈琲サロン 広島",200],
- [3,"13:25","13:45","호텔에서 짐 찾기","쇼핑한 물건도 함께 정리.",P.hotel,"Smile Hotel Hiroshima",200],
- [3,"13:45","14:15","히로시마 버스센터 2번 승강장","출발 10분 전 도착 목표. 짐이 많으면 택시.",P.bus,"Hiroshima Bus Center",250],
- [3,"14:15","15:10","리무진버스 → 히로시마공항","14:15 출발, 15:10 도착 예정. 편도 1,500엔.",P.airport,"Hiroshima Airport",800,1]
-].map((a,i)=>({i,d:a[0],s:a[1],e:a[2],name:a[3],note:a[4],ll:a[5],q:a[6],r:a[7],move:!!a[8],
+ [1,"15:15","15:55","히로시마공항 도착","입국심사와 수하물 수령 후 리무진버스 승차장(1번)으로.",P.airport,"Hiroshima Airport",800],
+ [1,"15:55","17:00","리무진버스 → 히로시마 버스센터","15:55 또는 16:15 버스. 약 55분.",P.bus,"Hiroshima Bus Center",300,1,[
+   ["버스","공항 1번 승강장 → 버스센터, 1,500엔. 15:55 출발(16:50 도착) · 16:15 출발(17:10 도착) · 놓치면 16:55 출발(17:50 도착).",BUS_URL,"공식 시간표"]]],
+ [1,"17:00","17:30","스마일 호텔 히로시마 체크인","7-10 Nagarekawacho, Naka Ward.",P.hotel,"Smile Hotel Hiroshima",200,0,[
+   ["도보","버스센터 → 호텔 약 15~20분(대략).",GM("Hiroshima Bus Center","Smile Hotel Hiroshima"),"경로"]]],
+ [1,"17:45","18:25","히로시마성 외관 · 주변 산책","성 내부 관람은 제외. 피곤하면 생략하고 원폭돔으로.",P.castle,"Hiroshima Castle",400],
+ [1,"18:40","19:25","원폭돔 · 평화기념공원","야간 산책.",P.dome,"Atomic Bomb Dome",400],
+ [1,"19:30","21:00","저녁: 히로시마 오코노미야키","오코노미무라 등.",P.okono,"Okonomimura Hiroshima",200],
+ [1,"21:00","22:00","혼도리 · 나가레카와","야간 거리 산책 후 호텔 복귀.",P.hondori,"Hondori Shopping Street Hiroshima",400],
+
+ [2,"07:35","08:00","JR 히로시마역으로 이동","08:00 열차를 타기 위한 준비 구간(일정표에는 없음).",P.hstation,"Hiroshima Station",300,1,[
+   ["도보·전차","호텔 → 히로시마역 도보 약 20분, 또는 노면전차(대략).",GM("Smile Hotel Hiroshima","Hiroshima Station"),"경로"]]],
+ [2,"08:00","09:15","JR + 페리 → 미야지마","히로시마역 → 미야지마구치 → 페리 → 미야지마.",P.mpier,"Miyajima Ferry Terminal",300,1,[
+   ["JR","산요본선 히로시마 → 미야지마구치, 약 30분(대략). 배차가 잦은 구간.",GM("Hiroshima Station","Miyajimaguchi Station"),"열차 시간표"],
+   ["도보","미야지마구치역 → 페리 선착장 약 5분."],
+   ["페리","JR 서일본 미야지마 페리, 약 10분. 왕복 400엔 + 미야지마 방문세 100엔.",GM("Miyajimaguchi Station","Miyajima Ferry Terminal"),"페리 시간표"]]],
+ [2,"09:15","12:00","미야지마 관광 · 먹거리","이쓰쿠시마 신사 → 도리이 → 다이쇼인 → 오모테산도(굴, 모미지만주, 아나고메시). 상점가는 30~45분만.",P.shrine,"Itsukushima Shrine",900],
+ [2,"12:00","14:45","페리 + JR → 오노미치","환승에 따라 2~3시간. 12시 정각에 선착장 도착이 목표.",P.ostation,"Onomichi Station",300,1,[
+   ["페리","미야지마 → 미야지마구치, 약 10분.",GM("Miyajima Ferry Terminal","Miyajimaguchi Station"),"페리 시간표"],
+   ["JR","산요본선 미야지마구치 → (이토자키 환승) → 오노미치, 약 2시간, 1,980엔.",GM("Miyajimaguchi Station","Onomichi Station"),"열차 시간표"],
+   ["대안","히로시마~후쿠야마 신칸센 이용 시 약 1시간 40분, 5,170~6,220엔."]]],
+ [2,"14:45","17:45","오노미치 관광","① 센코지 로프웨이·전망대 ② 센코지 ③ 고양이 골목 ④ 상점가. 미술관은 시간이 될 때만.",P.senkoji,"Senkoji Temple Onomichi",900,0,[
+   ["도보","오노미치역 → 로프웨이 산로쿠역 약 15분(대략).",GM("Onomichi Station","Senkoji Ropeway Sanroku Station"),"경로"],
+   ["로프웨이","센코지 로프웨이. 마지막 편이 이른 편이라 도착하면 먼저 탑승. 운행 시간과 요금은 현지 확인."]]],
+ [2,"17:45","18:30","저녁: 오노미치 라멘","시간 여유가 있으면 푸딩.",P.tani,"尾道ラーメン 尾道駅",300],
+ [2,"18:30","20:30","JR → 히로시마 복귀","도착 후 호텔.",P.hstation,"Hiroshima Station",300,1,[
+   ["JR","산요본선 오노미치 → 히로시마(이토자키·미하라 환승 가능), 약 1시간 30~40분(대략).",GM("Onomichi Station","Hiroshima Station"),"열차 시간표"],
+   ["도보·전차","히로시마역 → 호텔 도보 약 20분(대략).",GM("Hiroshima Station","Smile Hotel Hiroshima"),"경로"]]],
+
+ [3,"08:30","09:00","호텔 체크아웃","짐 보관이 되는지 프런트에 확인.",P.hotel,"Smile Hotel Hiroshima",200],
+ [3,"09:00","11:00","돈키호테 핫초보리 니시점","2시간 쇼핑. 면세용 여권 챙기기.",P.donki,"ドン・キホーテ 八丁堀西店",200],
+ [3,"11:00","11:35","호텔에서 짐 수령 · 정리","짐 동선에 따라 조정.",P.hotel,"Smile Hotel Hiroshima",200],
+ [3,"11:35","12:05","빠른 점심: 니쿠노 마스이","고기정식. 대기가 길면 인근 식당이나 테이크아웃.",P.masui,"肉のますゐ 広島",200],
+ [3,"12:05","12:20","카페: 아사히 커피 살롱","짧게 커피·디저트. 시간이 없으면 생략.",P.asahi,"朝日珈琲サロン 広島",200],
+ [3,"12:20","12:55","버스센터 2번 승강장","12:40까지 도착해서 대기. 짐이 많으면 택시.",P.bus,"Hiroshima Bus Center",250,0,[
+   ["도보","카페·호텔 주변 → 버스센터 약 15~20분(대략).",GM("Smile Hotel Hiroshima","Hiroshima Bus Center"),"경로"]]],
+ [3,"12:55","13:50","리무진버스 → 히로시마공항","기본 12:55 버스. 16:15 귀국편.",P.airport,"Hiroshima Airport",800,1,[
+   ["버스","버스센터 2번 승강장, 1,500엔. 12:35 출발(13:30 도착, 가장 여유) · 12:55 출발(13:50 도착, 기본) · 13:15 출발(14:10 도착, 마지막 선택지).",BUS_URL,"공식 시간표"],
+   ["주의","14:15 버스는 15:10 도착이라 16:15 출발까지 65분뿐. 이용하지 않기."]]],
+ [3,"13:50","16:15","공항 체크인 · 출국","체크인, 수하물 위탁, 보안검색, 출국. 16:15 출발.",P.airport,"Hiroshima Airport",800]
+].map((a,i)=>({i,d:a[0],s:a[1],e:a[2],name:a[3],note:a[4],ll:a[5],q:a[6],r:a[7],move:!!a[8],tr:a[9]||[],
   t0:new Date(DATES[a[0]]+"T"+a[1]+":00+09:00"),t1:new Date(DATES[a[0]]+"T"+a[2]+":00+09:00")}));
 
 const $=id=>document.getElementById(id);
@@ -184,6 +203,11 @@ function render(){
   $("sTime").textContent=fmtT(over?now-t.t1:started?t.t1-now:t.t0-now);
   $("route").href="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(t.q)+"&travelmode=transit";
 
+  const lg=$("legs");lg.textContent="";lg.hidden=!t.tr.length;
+  t.tr.forEach(l=>{const d=document.createElement("div");d.className="leg";const b=document.createElement("b");b.textContent=l[0];
+    const sp=document.createElement("div");sp.textContent=l[1]+" ";
+    if(l[2]){const a=document.createElement("a");a.href=l[2];a.target="_blank";a.rel="noopener";a.textContent=l[3]+" 보기";sp.appendChild(a);}
+    d.append(b,sp);lg.appendChild(d);});
   pin.setLatLng(t.ll);
   const st=$("status");
   if(me){
@@ -213,7 +237,8 @@ function render(){
     li.querySelector(".t").textContent=x.s+"~"+x.e;
     li.querySelector(".n").textContent=x.name;
     li.querySelector(".d").textContent=x.note;
-    li.onclick=()=>{manual=x.i;render();focusMap();};
+    if(x.tr.length){const g=document.createElement("div");g.className="tg";g.textContent="교통편 안내";li.lastChild.appendChild(g);}
+    li.onclick=()=>{manual=x.i;render();focusMap();document.querySelector("main").scrollTo({top:0,behavior:"smooth"});};
     ol.appendChild(li);
     if(x.i!==t.i)L.marker(x.ll,{icon:ic("dot")}).bindTooltip(x.name).addTo(dots);
   });
