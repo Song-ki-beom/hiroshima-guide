@@ -103,7 +103,7 @@ button:disabled{opacity:.55;cursor:default}
     <div class="status" id="status">위치 확인 버튼을 눌러 주세요.</div>
     <div id="legs" class="legs" hidden></div>
     <div class="row">
-      <button id="locate" type="button" class="primary">내 위치 켜기</button>
+      <button id="locate" type="button" class="primary">현재 위치에서 경로 탐색</button>
       <button id="auto" type="button" hidden>자동으로 돌아가기</button>
     </div>
   </section>
@@ -130,7 +130,7 @@ button:disabled{opacity:.55;cursor:default}
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
     </div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. <span id="ver">최종 수정 11/12 12:40</span></p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. <span id="ver">최종 수정 11/12 12:50</span></p>
 </main>
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-labelledby="stitle">
@@ -255,7 +255,7 @@ const S = [
   t0:new Date(DATES[a[0]]+"T"+a[1]+":00+09:00"),t1:new Date(DATES[a[0]]+"T"+a[2]+":00+09:00")}));
 
 const $=id=>document.getElementById(id);
-let posAt=0, me=null, manual=null, day=1, lastAlert=-1;
+let live=false, posAt=0, me=null, manual=null, day=1, lastAlert=-1;
 
 // 지도
 const map=L.map("map",{zoomControl:false,attributionControl:true}).setView(P.hotel,13);
@@ -308,7 +308,7 @@ function wantRoute(o,dest,key0,mode){
     fetch("https://routing.openstreetmap.de/"+prof+o[1]+","+o[0]+";"+dest[1]+","+dest[0]+"?overview=full&geometries=geojson")
       .then(r=>r.json()).then(j=>{rBusy=false;if(j.code!=="Ok")return;const g=j.routes[0], firstTime=!(R&&R.key===key);
         R={key,o,mode,dist:g.distance,dur:g.duration,coords:g.geometry.coordinates.map(c=>[c[1],c[0]])};rUpd=Date.now();render();
-        if(firstTime&&!me){const tt=manual!=null?S[manual]:autoTarget(new Date());if(key0===tt.i+"")fitRoute();}}).catch(()=>{rBusy=false;});}
+        if(firstTime&&!live){const tt=manual!=null?S[manual]:autoTarget(new Date());if(key0===tt.i+"")fitRoute();}}).catch(()=>{rBusy=false;});}
   return same?R:null;
 }
 function fitRoute(){if(R&&R.coords.length>1)map.fitBounds(R.coords,{padding:[30,30],maxZoom:17});}
@@ -341,7 +341,8 @@ function render(){
   $("eyebrow").textContent=manual!=null?"직접 고른 목적지":started&&!over?(t.move?"지금 이동 구간":"지금 일정"):"다음 행선지";
   $("name").textContent=t.name;
   $("note").textContent=t.s+"~"+t.e+" · "+t.note;
-  $("auto").hidden=manual==null;
+  $("auto").hidden=manual==null&&!live;
+  $("locate").textContent=$("locate").disabled?"위치 확인 중":live?"현재 위치에서 다시 탐색":"현재 위치에서 경로 탐색";
   $("sTimeLabel").textContent=over?"종료 후":started?"끝나기까지":"시작까지";
   $("sTime").textContent=fmtT(over?now-t.t1:started?t.t1-now:t.t0-now);
 
@@ -352,7 +353,7 @@ function render(){
   if(sheet&&sheet.kind==="tr")drawSheet();
   pin.setLatLng(t.ll);
   const st=$("status");
-  const prev=S[t.i-1], o=t.noloc?null:me||t.from||(prev&&prev.d===t.d&&dist(prev.ll,t.ll)>30?prev.ll:null);
+  const prev=S[t.i-1], o=t.noloc?null:(live&&me?me:null)||t.from||(prev&&prev.d===t.d&&dist(prev.ll,t.ll)>30?prev.ll:null);
   let walk=null, kind=null, toStart="";
   if(t.path){ // 열차·페리·로프웨이: 정해진 노선을 그림
     kind=t.pm;let len=0;for(let k=1;k<t.path.length;k++)len+=dist(t.path[k-1],t.path[k]);
@@ -360,14 +361,14 @@ function render(){
     $("sEtaL").textContent="예정 소요";$("sEta").textContent=fmtT(t.t1-t.t0);
     line.setLatLngs(t.path);
     // 내 위치가 켜져 있으면 출발 지점(역·선착장)까지의 도보 경로도 함께 표시
-    const ds=me?dist(me,t.path[0]):0, r2=me&&ds>80&&ds<=6000?wantRoute(me,t.path[0],t.i+"s","foot"):null;
+    const ds=live&&me?dist(me,t.path[0]):0, r2=live&&me&&ds>80&&ds<=6000?wantRoute(me,t.path[0],t.i+"s","foot"):null;
     line2.setLatLngs(r2?r2.coords:[]);
     if(r2){walk=r2.dur/60;toStart="출발 지점까지 도보 "+fmtD(r2.dist)+", 약 "+Math.max(1,Math.round(walk))+"분.";}
   }else if(o){
     line2.setLatLngs([]);
     const d0=dist(o,t.ll), mode=d0<=6000?"foot":(t.tr.some(l=>l[0]==="버스")?"car":null), r=wantRoute(o,t.ll,t.i+"",mode);
     kind=r?mode:null;
-    $("sDistL").textContent=(me?"남은 거리":"직전 장소에서")+(r?(mode==="foot"?" (도보 경로)":" (도로 경로)"):" (직선)");
+    $("sDistL").textContent=(live&&me?"남은 거리":"직전 장소에서")+(r?(mode==="foot"?" (도보 경로)":" (도로 경로)"):" (직선)");
     $("sDist").textContent=fmtD(r?r.dist:d0);
     $("sEtaL").textContent=r&&mode==="car"?"차량 예상":"도보 예상";
     walk=r&&mode==="foot"?r.dur/60:d0*1.3/75;
@@ -376,7 +377,8 @@ function render(){
   }else{line.setLatLngs([]);line2.setLatLngs([]);$("sDist").textContent="–";$("sEta").textContent="–";$("sDistL").textContent="남은 거리";}
   line.setStyle({color:{foot:"#0a9d58",car:"#e8710a",rail:"#7b3fe4",ferry:"#1a73e8"}[kind]||"#7a8a80",dashArray:kind==="foot"||kind==="car"?null:"8 8",weight:kind?6:4});
   const lp=line.getLatLngs();if(lp.length)startMk.setLatLng(lp[0]).addTo(map);else startMk.remove();
-  if(me&&!t.noloc){
+  $("live").hidden=!(live&&me);
+  if(live&&me&&!t.noloc){
     const d=dist(me,t.ll);
     const untilStart=(t.t0-now)/60000;
     if(d<=t.r){st.className="status ok";st.textContent="도착했습니다. 계획한 장소에 있습니다.";}
@@ -385,8 +387,8 @@ function render(){
     else if(d<3000&&walk>untilStart){st.className="status warn";st.textContent="지금 출발해야 합니다. 걸어서 약 "+Math.round(walk)+"분, 시작까지 "+fmtT(t.t0-now)+".";}
     else{st.className="status";st.textContent="아직 여유가 있습니다. 목적지까지 "+fmtD(d)+".";}
     if(toStart)st.textContent+=" "+toStart;
-    $("live").hidden=false;$("live").textContent="현재 위치 기준 · "+new Date(posAt).toLocaleTimeString("ko-KR",{hour12:false})+"에 확인 ("+fmtT(Date.now()-posAt)+" 전). 이동했으면 버튼을 눌러 다시 계산하세요.";
-  }else{st.className="status";st.textContent=t.noloc?"출발 공항에서의 일정이라 지도 경로가 없습니다. 지도의 핀은 도착지인 히로시마공항입니다.":t.path?"지도의 점선은 이 구간의 노선입니다. 내 위치를 켜면 현재 위치도 함께 표시됩니다.":o?"지도의 선은 직전 일정 장소에서 오는 길입니다. 내 위치 켜기를 누르면 현재 위치에서의 길로 바뀝니다.":"내 위치 켜기를 누르면 현재 위치에서의 길이 표시됩니다.";}
+    $("live").hidden=false;$("live").textContent="현재 위치 기준 · "+new Date(posAt).toLocaleTimeString("ko-KR",{hour12:false})+"에 확인 ("+fmtT(Date.now()-posAt)+" 전). 이동했으면 버튼을 눌러 다시 탐색하세요.";
+  }else{st.className="status";st.textContent=t.noloc?"출발 공항에서의 일정이라 지도 경로가 없습니다. 지도의 핀은 도착지인 히로시마공항입니다.":t.path?"지도의 점선은 이 구간의 노선입니다. 현재 위치에서 경로 탐색을 누르면 출발 지점까지의 길도 표시됩니다.":o?"지도의 선은 직전 일정 장소에서 오는 길입니다. 현재 위치에서 경로 탐색을 누르면 현재 위치에서의 길로 바뀝니다.":"현재 위치에서 경로 탐색을 누르면 현재 위치에서의 길이 표시됩니다.";}
   // 시작 10분 전 알림 (화면이 켜져 있을 때만)
   const mins=(a.t0-now)/60000;
   if(mins>0&&mins<=10&&lastAlert!==a.i){lastAlert=a.i;
@@ -405,7 +407,7 @@ function render(){
     [["tr",x.tr,"교통편 안내"],["fd",x.food,"음식점 후보"]].forEach(([k,arr,lab])=>{if(!arr.length)return;
       const bt=document.createElement("button");bt.type="button";bt.className="ibtn "+k;bt.innerHTML=IC[k];bt.setAttribute("aria-label",x.name+" "+lab);bt.title=lab;
       bt.onclick=e=>{e.stopPropagation();openSheet(k,x.i);};li.lastChild.appendChild(bt);});
-    li.onclick=()=>{manual=x.i;render();focusMap();document.querySelector("main").scrollTo({top:0,behavior:"smooth"});};
+    li.onclick=()=>{manual=x.i;live=false;render();focusMap();document.querySelector("main").scrollTo({top:0,behavior:"smooth"});};
     ol.appendChild(li);
     if(x.i!==t.i&&!x.noloc)L.marker(x.ll,{icon:ic("dot")}).bindTooltip(x.name).addTo(dots);
   });
@@ -414,8 +416,8 @@ function render(){
 }
 function focusMap(){
   const t=manual!=null?S[manual]:autoTarget(new Date());
-  if(t.path)map.fitBounds(me?t.path.concat([me]):t.path,{padding:[30,30],maxZoom:17});
-  else if(R&&R.key===t.i+""+R.mode&&R.coords.length>1)fitRoute();else if(me)map.fitBounds([me,t.ll],{padding:[40,40],maxZoom:17});else map.setView(t.ll,15);
+  if(t.path)map.fitBounds(live&&me?t.path.concat([me]):t.path,{padding:[30,30],maxZoom:17});
+  else if(R&&R.key===t.i+""+R.mode&&R.coords.length>1)fitRoute();else if(live&&me)map.fitBounds([me,t.ll],{padding:[40,40],maxZoom:17});else map.setView(t.ll,15);
 }
 
 // 버튼을 누를 때만 현재 위치를 읽고, 그 위치에서 경로를 다시 계산
@@ -423,9 +425,9 @@ $("locate").onclick=()=>{
   if(!navigator.geolocation){$("status").className="status bad";$("status").textContent="이 브라우저는 위치 기능을 지원하지 않습니다.";return;}
   try{window.Notification&&Notification.permission==="default"&&Notification.requestPermission();}catch(e){}
   const b=$("locate");b.disabled=true;b.textContent="위치 확인 중";
-  const done=()=>{b.disabled=false;b.textContent=me?"현재 위치에서 경로 다시 계산":"내 위치 켜기";};
+  const done=()=>{b.disabled=false;};
   navigator.geolocation.getCurrentPosition(p=>{
-    me=[p.coords.latitude,p.coords.longitude];posAt=Date.now();
+    me=[p.coords.latitude,p.coords.longitude];posAt=Date.now();live=true;
     meMk.setLatLng(me).addTo(map);acc.setLatLng(me).setRadius(p.coords.accuracy).addTo(map);
     done();render();focusMap();
   },e=>{done();
@@ -434,7 +436,9 @@ $("locate").onclick=()=>{
   },{enableHighAccuracy:true,maximumAge:0,timeout:20000});
 };
 $("sx").onclick=closeSheet;$("sheet").onclick=e=>{if(e.target===$("sheet"))closeSheet();};
-$("auto").onclick=()=>{manual=null;day=autoTarget(new Date()).d;render();focusMap();};
+// 초기 상태로: 지금 시간대 일정, 직전 일정 장소 기준 경로, 현재 위치 표시 제거
+function resetLive(){live=false;me=null;posAt=0;meMk.remove();acc.remove();line2.setLatLngs([]);}
+$("auto").onclick=()=>{manual=null;resetLive();day=autoTarget(new Date()).d;render();focusMap();};
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{day=+b.dataset.day;render();});
 
 // 푸시 알림 (ntfy.sh 예약 발송). 예약은 최대 3일 뒤까지만 받습니다.
@@ -478,7 +482,7 @@ $("nsched").onclick=async()=>{const b=$("nsched");b.disabled=true;nst("","예약
 scheduledTimes().then(h=>{const[c,t]=summary(h,Math.floor(Date.now()/1000));nst(c,t);}).catch(()=>{});
 
 // 처음 열 때와 백그라운드에서 돌아올 때: 지금 시간대의 일정을 자동으로 선택
-function goNow(){manual=null;closeSheet();if(day!==0)day=autoTarget(new Date()).d;render();focusMap();}
+function goNow(){manual=null;live=false;closeSheet();if(day!==0)day=autoTarget(new Date()).d;render();focusMap();}
 day=autoTarget(new Date()).d;render();focusMap();
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")goNow();});
 window.addEventListener("pageshow",e=>{if(e.persisted)goNow();});
