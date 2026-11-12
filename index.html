@@ -81,6 +81,10 @@ button:disabled{opacity:.55;cursor:default}
 .fc>div{flex:1;min-width:0}
 .fc .n{font-weight:700}.fc .d{font-size:13px;color:var(--muted)}.fc .m{font-size:13px;margin:4px 0 8px}
 .fc a.btn{display:inline-block;padding:8px 12px;font-size:13px}
+.bd{display:flex;gap:10px;align-items:center;min-width:0}
+.tx{flex:1;min-width:0}
+.ph{flex:none;width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--line)}
+.hero{display:block;width:100%;max-width:520px;height:170px;object-fit:cover;border-radius:12px;margin-top:10px;background:var(--line)}
 .foot{font-size:12px;color:var(--muted);text-align:center}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;background:#0a9d58;border:3px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .me{width:18px;height:18px;border-radius:50%;background:#2b7cff;border:3px solid #fff;box-shadow:0 0 0 2px rgba(43,124,255,.35)}
@@ -94,6 +98,7 @@ button:disabled{opacity:.55;cursor:default}
     <div class="eyebrow" id="eyebrow">다음 행선지</div>
     <h1 id="name">불러오는 중</h1>
     <div class="sub" id="note"></div>
+    <img id="photo" class="hero" hidden alt="">
     <div class="stats">
       <div class="stat"><b id="sDist">–</b><span id="sDistL">남은 거리</span></div>
       <div class="stat"><b id="sEta">–</b><span id="sEtaL">도보 예상</span></div>
@@ -130,7 +135,7 @@ button:disabled{opacity:.55;cursor:default}
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
     </div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. <span id="ver">최종 수정 11/12 12:50</span></p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 명소 사진은 위키백과의 대표 사진입니다. <span id="ver">최종 수정 11/12 13:00</span></p>
 </main>
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-labelledby="stitle">
@@ -184,6 +189,17 @@ const FOOD={
  "식사: 공항 3층 ROYAL HOST":[
   ["ROYAL HOST","히로시마공항 3층. 06:30~20:00. 체크인을 먼저 한 뒤 이용.","일본식·양식 메뉴","ロイヤルホスト 広島空港","ハンバーグ"],
   ["밋짱 (공항점)","히로시마공항 3층. 10:00~20:00.","오코노미야키","みっちゃん 広島空港","お好み焼き"]]
+};
+// 명소·거점 사진: 일정 이름 → 일본어 위키백과 문서 (대표 사진을 불러옴)
+const PHOTO={
+ "히로시마공항 도착":"広島空港","리무진버스 → 히로시마 버스센터":"広島バスセンター",
+ "히로시마성 외관":"広島城","원폭돔":"原爆ドーム","평화기념공원":"広島平和記念公園",
+ "저녁: 오코노미무라":"お好み村","혼도리 · 나가레카와 산책":"流川 (広島市)",
+ "JR 히로시마역으로 이동":"広島駅","JR 산요본선 → 미야지마구치역":"宮島口駅","페리 → 미야지마":"JR西日本宮島フェリー",
+ "이쓰쿠시마 신사 · 도리이":"厳島神社","다이쇼인":"大聖院 (廿日市市)","페리 → 미야지마구치":"JR西日本宮島フェリー",
+ "JR 산요본선 → 오노미치":"尾道駅","로프웨이 산로쿠역으로":"千光寺山ロープウェイ","센코지 로프웨이 · 전망대":"千光寺公園",
+ "센코지":"千光寺 (尾道市)","JR 산요본선 → 히로시마역":"広島駅",
+ "버스센터 2번 승강장":"広島バスセンター","리무진버스 → 히로시마공항":"広島空港"
 };
 const BUS_URL="https://www.hij.airport.jp/access/timetable/1.html";
 // 교통편: [구분, 설명, 시간표 링크, 링크 이름]. "대략" 표시는 공식 시간표로 확인하지 못한 값.
@@ -314,7 +330,7 @@ function wantRoute(o,dest,key0,mode){
 function fitRoute(){if(R&&R.coords.length>1)map.fitBounds(R.coords,{padding:[30,30],maxZoom:17});}
 let sheet=null; const imgCache={};
 function wikiImg(title,img){
-  const set=u=>{if(u){img.src=u;img.hidden=false;}};
+  const set=u=>{if(img.dataset.t&&img.dataset.t!==title)return;if(u){img.src=u;img.hidden=false;}};
   if(title in imgCache)return set(imgCache[title]);
   fetch("https://ja.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(title)).then(r=>r.ok?r.json():null)
     .then(j=>{imgCache[title]=j&&j.thumbnail?j.thumbnail.source:"";set(imgCache[title]);}).catch(()=>{});
@@ -351,6 +367,8 @@ function render(){
   if(ts){const h=document.createElement("div");h.className="legh";h.textContent=ts===t?"이 일정의 교통편":"다음 교통편 · "+ts.s+" "+ts.name;lg.appendChild(h);}
   (ts?ts.tr:[]).forEach(l=>lg.appendChild(legNode(ts,l,now)));
   if(sheet&&sheet.kind==="tr")drawSheet();
+  const hero=$("photo"), pt=PHOTO[t.name]||"";
+  if(hero.dataset.t!==pt){hero.hidden=true;hero.removeAttribute("src");hero.dataset.t=pt;hero.alt=pt?t.name+" 사진":"";if(pt)wikiImg(pt,hero);}
   pin.setLatLng(t.ll);
   const st=$("status");
   const prev=S[t.i-1], o=t.noloc?null:(live&&me?me:null)||t.from||(prev&&prev.d===t.d&&dist(prev.ll,t.ll)>30?prev.ll:null);
@@ -400,7 +418,8 @@ function render(){
   S.filter(x=>x.d===day).forEach(x=>{
     const li=document.createElement("li");
     li.className=(x.t1<=now?"done ":"")+(x.i===t.i?"target":"");
-    li.innerHTML='<div class="t"></div><div><div class="n"></div><div class="d"></div></div><div class="ib"></div>';
+    li.innerHTML='<div class="t"></div><div class="bd"><div class="tx"><div class="n"></div><div class="d"></div></div></div><div class="ib"></div>';
+    if(PHOTO[x.name]){const im=document.createElement("img");im.className="ph";im.alt=x.name+" 사진";im.hidden=true;im.loading="lazy";li.children[1].prepend(im);wikiImg(PHOTO[x.name],im);}
     li.querySelector(".t").textContent=x.s+"~"+x.e;
     li.querySelector(".n").textContent=x.name;
     li.querySelector(".d").textContent=x.note;
