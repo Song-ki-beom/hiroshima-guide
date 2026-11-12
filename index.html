@@ -130,7 +130,7 @@ button:disabled{opacity:.55;cursor:default}
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
     </div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. <span id="ver">최종 수정 11/12 12:25</span></p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. <span id="ver">최종 수정 11/12 12:40</span></p>
 </main>
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-labelledby="stitle">
@@ -148,8 +148,8 @@ const P = { // 대략 좌표
   dome:[34.3955,132.4536], okono:[34.3913,132.4619], hondori:[34.3932,132.4570], hstation:[34.3978,132.4753],
   mguchi:[34.3123,132.3029], shrine:[34.2965,132.3190], daisho:[34.2918,132.3186], omote:[34.2996,132.3220],
   kakiya:[34.2982,132.3212], mpier:[34.3021,132.3222], ostation:[34.4048,133.1931], oarcade:[34.4103,133.2020],
-  peak:[34.4109,133.1974], museum:[34.4100,133.1957], senkoji:[34.4104,133.1987], tani:[34.4049,133.1936], hoshino:[34.3975,132.4758], wada:[34.2996,132.3220], ropeway:[34.4107,133.2015], cat:[34.4096,133.2001], park:[34.3932,132.4523], shop:[34.4086,133.1985],
-  donki:[34.3935,132.4625], masui:[34.3946,132.4632], asahi:[34.3929,132.4630]
+  peak:[34.4109,133.1974], museum:[34.4100,133.1957], senkoji:[34.4104,133.1987], tani:[34.4045,133.1930], hoshino:[34.3975,132.4758], wada:[34.2996,132.3220], ropeway:[34.4107,133.2015], cat:[34.4096,133.2001], park:[34.3932,132.4523], shop:[34.4086,133.1985],
+  donki:[34.3945,132.4620], masui:[34.3946,132.4632], asahi:[34.3929,132.4630]
 };
 const GM=(o,d)=>"https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(o)+"&destination="+encodeURIComponent(d)+"&travelmode=transit";
 const FERRY_URL="https://jr-miyajimaferry.co.jp/timetable/";
