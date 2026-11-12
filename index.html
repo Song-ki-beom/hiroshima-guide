@@ -425,7 +425,7 @@ $("locate").onclick=()=>{
   if(!navigator.geolocation){$("status").className="status bad";$("status").textContent="이 브라우저는 위치 기능을 지원하지 않습니다.";return;}
   try{window.Notification&&Notification.permission==="default"&&Notification.requestPermission();}catch(e){}
   const b=$("locate");b.disabled=true;b.textContent="위치 확인 중";
-  const done=()=>{b.disabled=false;};
+  const done=()=>{b.disabled=false;b.textContent=live?"현재 위치에서 다시 탐색":"현재 위치에서 경로 탐색";};
   navigator.geolocation.getCurrentPosition(p=>{
     me=[p.coords.latitude,p.coords.longitude];posAt=Date.now();live=true;
     meMk.setLatLng(me).addTo(map);acc.setLatLng(me).setRadius(p.coords.accuracy).addTo(map);
