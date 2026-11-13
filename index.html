@@ -135,7 +135,7 @@ button:disabled{opacity:.55;cursor:default}
     <div class="status" id="nstatus" style="margin-top:10px">아직 예약 상태를 확인하지 않았습니다.</div>
     </div>
   </section>
-  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 명소 사진은 위키백과의 대표 사진입니다. <span id="ver">최종 수정 11/12 13:00</span></p>
+  <p class="foot">일정을 누르면 그 장소가 목적지로 바뀝니다. 오른쪽 초록 아이콘은 교통편 안내, 주황 아이콘은 음식점 후보입니다. 지도 선 색: 초록 도보, 주황 버스, 보라 점선 열차(개략 노선), 파랑 점선 페리·로프웨이. 핀 위치는 대략적인 좌표라 수백 m 오차가 있을 수 있습니다. 명소 사진은 위키백과의 대표 사진입니다. <span id="ver">최종 수정 11/13 16:45</span></p>
 </main>
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-labelledby="stitle">
@@ -271,7 +271,7 @@ const S = [
   t0:new Date(DATES[a[0]]+"T"+a[1]+":00+09:00"),t1:new Date(DATES[a[0]]+"T"+a[2]+":00+09:00")}));
 
 const $=id=>document.getElementById(id);
-let live=false, posAt=0, me=null, manual=null, day=1, lastAlert=-1;
+let live=false, anchor=null, anchorAt=0, watchId=null, drawT=null, posAt=0, me=null, manual=null, day=1, lastAlert=-1;
 
 // 지도
 const map=L.map("map",{zoomControl:false,attributionControl:true}).setView(P.hotel,13);
@@ -371,7 +371,7 @@ function render(){
   if(hero.dataset.t!==pt){hero.hidden=true;hero.removeAttribute("src");hero.dataset.t=pt;hero.alt=pt?t.name+" 사진":"";if(pt)wikiImg(pt,hero);}
   pin.setLatLng(t.ll);
   const st=$("status");
-  const prev=S[t.i-1], o=t.noloc?null:(live&&me?me:null)||t.from||(prev&&prev.d===t.d&&dist(prev.ll,t.ll)>30?prev.ll:null);
+  const prev=S[t.i-1], o=t.noloc?null:(live&&anchor?anchor:null)||t.from||(prev&&prev.d===t.d&&dist(prev.ll,t.ll)>30?prev.ll:null);
   let walk=null, kind=null, toStart="";
   if(t.path){ // 열차·페리·로프웨이: 정해진 노선을 그림
     kind=t.pm;let len=0;for(let k=1;k<t.path.length;k++)len+=dist(t.path[k-1],t.path[k]);
@@ -379,14 +379,14 @@ function render(){
     $("sEtaL").textContent="예정 소요";$("sEta").textContent=fmtT(t.t1-t.t0);
     line.setLatLngs(t.path);
     // 내 위치가 켜져 있으면 출발 지점(역·선착장)까지의 도보 경로도 함께 표시
-    const ds=live&&me?dist(me,t.path[0]):0, r2=live&&me&&ds>80&&ds<=6000?wantRoute(me,t.path[0],t.i+"s","foot"):null;
+    const ds=live&&anchor?dist(anchor,t.path[0]):0, r2=live&&anchor&&ds>80&&ds<=6000?wantRoute(anchor,t.path[0],t.i+"s","foot"):null;
     line2.setLatLngs(r2?r2.coords:[]);
     if(r2){walk=r2.dur/60;toStart="출발 지점까지 도보 "+fmtD(r2.dist)+", 약 "+Math.max(1,Math.round(walk))+"분.";}
   }else if(o){
     line2.setLatLngs([]);
     const d0=dist(o,t.ll), mode=d0<=6000?"foot":(t.tr.some(l=>l[0]==="버스")?"car":null), r=wantRoute(o,t.ll,t.i+"",mode);
     kind=r?mode:null;
-    $("sDistL").textContent=(live&&me?"남은 거리":"직전 장소에서")+(r?(mode==="foot"?" (도보 경로)":" (도로 경로)"):" (직선)");
+    $("sDistL").textContent=(live&&anchor?"탐색 위치에서":"직전 장소에서")+(r?(mode==="foot"?" (도보 경로)":" (도로 경로)"):" (직선)");
     $("sDist").textContent=fmtD(r?r.dist:d0);
     $("sEtaL").textContent=r&&mode==="car"?"차량 예상":"도보 예상";
     walk=r&&mode==="foot"?r.dur/60:d0*1.3/75;
@@ -396,7 +396,7 @@ function render(){
   line.setStyle({color:{foot:"#0a9d58",car:"#e8710a",rail:"#7b3fe4",ferry:"#1a73e8"}[kind]||"#7a8a80",dashArray:kind==="foot"||kind==="car"?null:"8 8",weight:kind?6:4});
   const lp=line.getLatLngs();if(lp.length)startMk.setLatLng(lp[0]).addTo(map);else startMk.remove();
   $("live").hidden=!(live&&me);
-  if(live&&me&&!t.noloc){
+  if(live&&me&&anchor&&!t.noloc){
     const d=dist(me,t.ll);
     const untilStart=(t.t0-now)/60000;
     if(d<=t.r){st.className="status ok";st.textContent="도착했습니다. 계획한 장소에 있습니다.";}
@@ -405,7 +405,7 @@ function render(){
     else if(d<3000&&walk>untilStart){st.className="status warn";st.textContent="지금 출발해야 합니다. 걸어서 약 "+Math.round(walk)+"분, 시작까지 "+fmtT(t.t0-now)+".";}
     else{st.className="status";st.textContent="아직 여유가 있습니다. 목적지까지 "+fmtD(d)+".";}
     if(toStart)st.textContent+=" "+toStart;
-    $("live").hidden=false;$("live").textContent="현재 위치 기준 · "+new Date(posAt).toLocaleTimeString("ko-KR",{hour12:false})+"에 확인 ("+fmtT(Date.now()-posAt)+" 전). 이동했으면 버튼을 눌러 다시 탐색하세요.";
+    $("live").hidden=false;$("live").textContent="경로는 "+new Date(anchorAt).toLocaleTimeString("ko-KR",{hour12:false})+" 위치 기준 · 파란 점은 자동 갱신 ("+Math.max(0,Math.round((Date.now()-posAt)/1000))+"초 전). 경로를 새로 받으려면 버튼을 다시 누르세요.";
   }else{st.className="status";st.textContent=t.noloc?"출발 공항에서의 일정이라 지도 경로가 없습니다. 지도의 핀은 도착지인 히로시마공항입니다.":t.path?"지도의 점선은 이 구간의 노선입니다. 현재 위치에서 경로 탐색을 누르면 출발 지점까지의 길도 표시됩니다.":o?"지도의 선은 직전 일정 장소에서 오는 길입니다. 현재 위치에서 경로 탐색을 누르면 현재 위치에서의 길로 바뀝니다.":"현재 위치에서 경로 탐색을 누르면 현재 위치에서의 길이 표시됩니다.";}
   // 시작 10분 전 알림 (화면이 켜져 있을 때만)
   const mins=(a.t0-now)/60000;
@@ -443,11 +443,13 @@ function focusMap(){
 $("locate").onclick=()=>{
   if(!navigator.geolocation){$("status").className="status bad";$("status").textContent="이 브라우저는 위치 기능을 지원하지 않습니다.";return;}
   try{window.Notification&&Notification.permission==="default"&&Notification.requestPermission();}catch(e){}
+  // 이미 추적 중이면 지금 파란 점 위치를 바로 경로 기준으로 사용
+  if(watchId!=null&&me){anchor=me.slice();anchorAt=Date.now();live=true;render();focusMap();return;}
   const b=$("locate");b.disabled=true;b.textContent="위치 확인 중";
   const done=()=>{b.disabled=false;b.textContent=live?"현재 위치에서 다시 탐색":"현재 위치에서 경로 탐색";};
   navigator.geolocation.getCurrentPosition(p=>{
-    me=[p.coords.latitude,p.coords.longitude];posAt=Date.now();live=true;
-    meMk.setLatLng(me).addTo(map);acc.setLatLng(me).setRadius(p.coords.accuracy).addTo(map);
+    setPos(p);anchor=me.slice();anchorAt=Date.now();live=true;
+    startWatch();
     done();render();focusMap();
   },e=>{done();
     $("status").className="status bad";
@@ -455,8 +457,20 @@ $("locate").onclick=()=>{
   },{enableHighAccuracy:true,maximumAge:0,timeout:20000});
 };
 $("sx").onclick=closeSheet;$("sheet").onclick=e=>{if(e.target===$("sheet"))closeSheet();};
-// 초기 상태로: 지금 시간대 일정, 직전 일정 장소 기준 경로, 현재 위치 표시 제거
-function resetLive(){live=false;me=null;posAt=0;meMk.remove();acc.remove();line2.setLatLngs([]);}
+// 파란 점(현재 위치)만 옮김. 경로 기준 위치(anchor)는 건드리지 않음
+function setPos(p){me=[p.coords.latitude,p.coords.longitude];posAt=Date.now();
+  meMk.setLatLng(me).addTo(map);acc.setLatLng(me).setRadius(p.coords.accuracy).addTo(map);}
+// 버튼을 한 번 누른 뒤에는 현재 위치를 계속 추적해 파란 점을 갱신 (경로는 다시 계산하지 않음)
+function startWatch(){
+  if(watchId!=null)return;
+  // 위치가 바뀔 때마다 파란 점을 즉시 옮기고, 화면 글자는 1.5초 뒤에 한 번만 갱신
+  const onMove=p=>{setPos(p);if(!drawT)drawT=setTimeout(()=>{drawT=null;render();},1500);};
+  watchId=navigator.geolocation.watchPosition(onMove,()=>{},{enableHighAccuracy:true,maximumAge:3000,timeout:30000});
+}
+// 다른 앱에 다녀오면 추적이 멈춰 있을 수 있어 다시 시작
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;startWatch();}});
+// 초기 상태로: 지금 시간대 일정, 직전 일정 장소 기준 경로. 파란 점은 계속 표시
+function resetLive(){live=false;anchor=null;line2.setLatLngs([]);}
 $("auto").onclick=()=>{manual=null;resetLive();day=autoTarget(new Date()).d;render();focusMap();};
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{day=+b.dataset.day;render();});
 
